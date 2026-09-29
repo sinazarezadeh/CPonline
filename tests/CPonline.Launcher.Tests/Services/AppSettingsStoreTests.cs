@@ -24,7 +24,13 @@ public class AppSettingsStoreTests : IDisposable
     public void Save_ThenLoad_RoundTrips()
     {
         var store = new AppSettingsStore(SettingsPath);
-        var settings = new AppSettings { GameRoot = @"C:\Games\Cyberpunk 2077", RelayUrl = "ws://example.invalid/session", LocalPort = 12000 };
+        var settings = new AppSettings
+        {
+            GameRoot = @"C:\Games\Cyberpunk 2077",
+            RelayUrl = "ws://example.invalid/session",
+            LocalPort = 12000,
+            DefaultServerAddress = "203.0.113.5:11778",
+        };
 
         store.Save(settings);
         var loaded = store.Load();
@@ -32,6 +38,7 @@ public class AppSettingsStoreTests : IDisposable
         Assert.Equal(settings.GameRoot, loaded.GameRoot);
         Assert.Equal(settings.RelayUrl, loaded.RelayUrl);
         Assert.Equal(settings.LocalPort, loaded.LocalPort);
+        Assert.Equal(settings.DefaultServerAddress, loaded.DefaultServerAddress);
     }
 
     public void Dispose() => Directory.Delete(_tempDir, recursive: true);
@@ -52,6 +59,17 @@ public class AppSessionStateTests : IDisposable
         state.GameRoot = @"C:\Games\Cyberpunk 2077";
 
         Assert.Equal(@"C:\Games\Cyberpunk 2077", store.Load().GameRoot);
+    }
+
+    [Fact]
+    public void SettingDefaultServerAddress_PersistsToTheStore()
+    {
+        var store = new AppSettingsStore(SettingsPath);
+        var state = new AppSessionState(store);
+
+        state.DefaultServerAddress = "203.0.113.5:11778";
+
+        Assert.Equal("203.0.113.5:11778", store.Load().DefaultServerAddress);
     }
 
     [Fact]

@@ -1,0 +1,18 @@
+services:
+  matchmaking:
+    build:
+      context: ..
+      dockerfile: src/CPonline.Matchmaking/Dockerfile
+    container_name: cponline-matchmaking
+    restart: unless-stopped
+    ports:
+      - "${MATCHMAKING_PORT:-8080}:8080"
+
+  cyberpunkmp:
+    build:
+      context: ./vendor/CyberpunkMP
+    container_name: cponline-cyberpunkmp
+    restart: unless-stopped
+    ports:
+      - "${CYBERPUNKMP_PORT:-11778}:11778/tcp"
+      - "${CYBERPUNKMP_PORT:-11778}:11778/udp"

@@ -27,6 +27,9 @@
         </Border>
 
         <TabControl Grid.Row="1" Margin="8" Background="{StaticResource BgBrush}" BorderThickness="0">
+            <TabItem Header="PLAY">
+                <views:PlayView DataContext="{Binding Play}" />
+            </TabItem>
             <TabItem Header="MODS">
                 <views:ModManagerView DataContext="{Binding ModManager}" />
             </TabItem>

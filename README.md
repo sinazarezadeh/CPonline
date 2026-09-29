@@ -8,13 +8,17 @@ accommodates, or works around DRM/cracked copies - it's an ordinary mod manager 
 
 ## What it does
 
+- **Play tab** - the only screen a non-technical friend needs. Detects the game, installs/
+  updates mods, and launches, all automatically - the one thing to type in is the server address
+  (`ip:port`) someone gave you.
 - **Mods tab** - detects your Cyberpunk 2077 install (Steam/GOG/Epic, or browse manually) and
   installs/updates the mod stack CyberpunkMP needs (RED4ext, CET, Redscript, ArchiveXL, TweakXL,
   Codeware, Input Loader, CyberpunkMP itself), downloading each fresh from its own GitHub
-  Releases and verifying its checksum before extracting anything.
+  Releases and verifying its checksum before extracting anything, with live progress bars.
 - **Host tab** - optionally runs the CyberpunkMP dedicated server locally via Docker, creates a
   room on the matchmaking relay, tries UPnP then STUN to make your connection reachable, and
-  launches the game.
+  launches the game. (For a friend-group server that's just always on, prefer deploying it to a
+  VPS instead - see `deploy/README.md` - and have everyone use the Play tab.)
 - **Join tab** - resolve a friend's room code through the relay, or connect directly by IP, and
   launch the game against that target.
 - **Settings tab** - which matchmaking relay to use, and the local UDP port.
@@ -25,18 +29,22 @@ accommodates, or works around DRM/cracked copies - it's an ordinary mod manager 
 CPonline.sln
 src/
   CPonline.Shared/          DTOs shared between the launcher and the matchmaking service
-  CPonline.Launcher.Core/   All the actual logic (install detection, mod install, launch
-                             orchestration, NAT traversal, matchmaking client) - plain net8.0,
-                             no WPF dependency, so it builds and tests on any OS
+  CPonline.Launcher.Core/   All the actual logic (install detection, mod install + progress
+                             reporting, launch orchestration, NAT traversal, matchmaking
+                             client) - plain net8.0, no WPF dependency, builds/tests on any OS
   CPonline.Launcher/        The WPF app itself (net8.0-windows) - Views/ViewModels wiring
-                             Launcher.Core's services together
+                             Launcher.Core's services together, Cyberpunk-themed UI
   CPonline.Matchmaking/     The room-code signaling relay (ASP.NET Core minimal API +
                              WebSockets) - only ever carries small JSON control messages,
                              never game traffic
+deploy/
+  setup.sh                  One-shot script: builds and runs both the matchmaking relay and a
+                             real CyberpunkMP dedicated server on a Linux VPS - see deploy/README.md
+  docker-compose.yml
 tests/
   CPonline.Launcher.Tests/     Unit tests for Launcher.Core (VDF parsing, checksum
                                 verification, mod-manifest handling, launch-argument building,
-                                STUN packet encode/decode, ...)
+                                STUN packet encode/decode, progress reporting, ...)
   CPonline.Matchmaking.Tests/  Unit + integration tests for the matchmaking service
 scripts/
   update-mods-manifest.sh   Regenerates manifests/mods.json with real, verified tags/hashes
@@ -61,47 +69,46 @@ dotnet build CPonline.CrossPlatform.slnf
 dotnet test CPonline.CrossPlatform.slnf
 ```
 
-## Running the matchmaking relay locally
+## Running a server
 
+For an always-on friend-group server (recommended - lets everyone just use the Play tab with a
+fixed `ip:port`, no local Docker/hosting needed on anyone's PC), deploy to a Linux VPS:
+
+```
+git clone https://github.com/sinazarezadeh/CPonline
+cd CPonline
+./deploy/setup.sh
+```
+
+See `deploy/README.md` for details - it builds and runs both the CyberpunkMP dedicated server
+(compiled fresh from its own upstream source) and the matchmaking relay, and prints the exact
+address to give your friends.
+
+To just run the matchmaking relay locally instead:
 ```
 dotnet run --project src/CPonline.Matchmaking
 ```
-
 or via Docker:
 ```
 docker build -t cponline-matchmaking -f src/CPonline.Matchmaking/Dockerfile .
 docker run -p 8080:8080 cponline-matchmaking
 ```
 
-Point the launcher's Settings tab at `ws://<host>:8080/session`.
+## Mod manifest
 
-## Before using the launcher for real
+`src/CPonline.Launcher/manifests/mods.json` is pinned to real, verified tags and SHA-256 hashes
+for all 8 mod dependencies. To refresh it after an upstream mod update, run
+`scripts/update-mods-manifest.sh` (needs `curl`, `jq`, `sha256sum`) and review the diff before
+committing - `ModManager` refuses to extract anything whose checksum doesn't match the manifest.
 
-`src/CPonline.Launcher/manifests/mods.json` ships with **placeholder** `tag`/`sha256` values
-(`REPLACE_WITH_VERIFIED_TAG` / all zeros) for every mod dependency, because this repository was
-built in a sandboxed environment with no access to GitHub's release API or download hosts, so
-the pinned tags and checksums could not be verified or computed here. From a machine with normal
-internet access, run:
+## Known open items
 
-```
-scripts/update-mods-manifest.sh
-```
-
-This fetches each mod's latest release, downloads the matching asset, computes its real SHA-256,
-and rewrites the manifest in place. Review the diff, then commit it. `ModManager` refuses to
-extract anything whose checksum doesn't match the manifest, so the placeholder values simply
-make every install fail closed rather than silently skip verification - the launcher is safe to
-build and test before this step, just not to actually install mods with.
-
-## Known open items (tracked as "Milestone 0" spikes)
-
-- Exact current mod install-folder layout per pinned version (these drift across major mod
-  releases) - `manifests/mods.json`'s `installTargets` are a best-effort based on documented
-  convention, not yet verified against real installs.
-- Whether the CyberpunkMP server binary runs standalone on Windows outside Docker.
-- The `-online -ip=... -port=...` launch-parameter hand-off (confirmed from CyberpunkMP's own
-  source) should be verified against a real Steam-launched, owned copy before relying on it.
-- Current GOG product ID / Epic catalog display name matching for Cyberpunk 2077.
+- Exact mod install-folder layout is verified for the currently-pinned versions; it can drift on
+  a future upstream mod release, so re-check `installTargets` after running the update script.
+- Whether the CyberpunkMP server binary runs standalone outside Docker is still unconfirmed -
+  Docker (via `deploy/setup.sh`, or manually per that repo's README) is the verified path.
+- Current GOG product ID / Epic catalog display-name matching for Cyberpunk 2077 hasn't been
+  verified against a real GOG/Epic install yet (Steam detection has been).
 - No code-signing certificate is set up, so the built launcher .exe will trigger a Windows
   SmartScreen "unknown publisher" warning until one is added.
 

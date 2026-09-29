@@ -73,6 +73,7 @@ public partial class App : Application
             sp.GetRequiredService<IGameInstallLocator>(),
             sp.GetRequiredService<AppSessionState>(),
             Path.Combine(AppContext.BaseDirectory, "manifests", "mods.json")));
+        services.AddSingleton<PlayViewModel>();
         services.AddSingleton<HostSessionViewModel>();
         services.AddSingleton<JoinSessionViewModel>();
         services.AddSingleton<SettingsViewModel>();

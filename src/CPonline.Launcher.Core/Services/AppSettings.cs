@@ -9,4 +9,8 @@ public sealed record AppSettings
     public string RelayUrl { get; init; } = "ws://localhost:5080/session";
 
     public int LocalPort { get; init; } = 11778;
+
+    /// <summary>The "ip:port" of a friend's persistent server, pre-filled on the Play tab so a
+    /// non-technical user only ever has to paste this once. Empty until they've entered one.</summary>
+    public string DefaultServerAddress { get; init; } = string.Empty;
 }

@@ -1,0 +1,49 @@
+<UserControl x:Class="CPonline.Launcher.Views.PlayView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="{Binding GameStatusText}" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Content="BROWSE..." Click="BrowseButton_Click" Padding="10,3" />
+        </Grid>
+
+        <TextBlock Grid.Row="1" Text="{Binding ModsStatusText}" Foreground="{StaticResource TextSecondaryBrush}"
+                    Margin="0,0,0,20" />
+
+        <StackPanel Grid.Row="2" Visibility="{Binding IsInstallingMods, Converter={StaticResource BoolToVis}}" Margin="0,0,0,20">
+            <ProgressBar Height="8" Minimum="0" Maximum="100" Value="{Binding ModsProgressPercent, Mode=OneWay}" />
+            <TextBlock Text="{Binding ModsProgressPercent, StringFormat='Setting up mods: {0:0}%'}" FontSize="10" Margin="0,2,0,0" />
+        </StackPanel>
+
+        <TextBlock Grid.Row="3" Text="SERVER ADDRESS" FontFamily="{StaticResource HeaderFont}" FontWeight="Bold"
+                   Foreground="{StaticResource AccentYellowBrush}" Margin="0,0,0,8" />
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,0,24">
+            <TextBox Text="{Binding ServerAddress, UpdateSourceTrigger=PropertyChanged}"
+                     Width="320" FontFamily="{StaticResource HeaderFont}" FontSize="18"
+                     VerticalAlignment="Center" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="5" VerticalAlignment="Top">
+            <Button Content="PLAY" Command="{Binding PlayCommand}" HorizontalAlignment="Left"
+                    FontSize="20" Padding="40,12" Margin="0,0,0,16" />
+            <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" />
+        </StackPanel>
+    </Grid>
+</UserControl>
