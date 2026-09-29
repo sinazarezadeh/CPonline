@@ -13,8 +13,16 @@
 # matches assetNamePattern, the actual asset names are printed so the pattern can be fixed
 # without needing to open GitHub in a browser.
 #
+# Every value pulled from jq/curl is passed through strip_cr: on Windows/Git Bash, native
+# (non-MSYS) jq.exe/curl.exe builds can leak a trailing \r into captured command-substitution
+# output even though the script file itself is plain LF, which silently breaks string
+# comparisons like `.id == $id` with no visible syntax error - safe to strip unconditionally
+# everywhere else too.
+#
 # Requires: curl, jq, sha256sum (or shasum -a 256 on macOS).
 set -uo pipefail
+
+strip_cr() { tr -d '\r'; }
 
 MANIFEST="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/src/CPonline.Launcher/manifests/mods.json"
 SHA256_CMD="sha256sum"
@@ -23,14 +31,19 @@ command -v sha256sum >/dev/null 2>&1 || SHA256_CMD="shasum -a 256"
 tmp_manifest="$(mktemp)"
 trap 'rm -f "$tmp_manifest"' EXIT
 
-mod_ids=$(jq -r '.[].id' "$MANIFEST")
+mod_ids=$(jq -r '.[].id' "$MANIFEST" | strip_cr)
 
 for id in $mod_ids; do
-  entry=$(jq -c --arg id "$id" '.[] | select(.id == $id)' "$MANIFEST")
-  repo=$(jq -r '.repo' <<<"$entry")
-  pattern=$(jq -r '.assetNamePattern' <<<"$entry")
+  entry=$(jq -c --arg id "$id" '.[] | select(.id == $id)' "$MANIFEST" | strip_cr)
+  repo=$(jq -r '.repo' <<<"$entry" | strip_cr)
+  pattern=$(jq -r '.assetNamePattern' <<<"$entry" | strip_cr)
 
   echo "==> $id ($repo)" >&2
+
+  if [[ -z "$repo" ]]; then
+    echo "    WARNING: couldn't read this mod's entry from mods.json (id lookup failed) - skipping." >&2
+    continue
+  fi
 
   release_json=$(curl -sS -H "User-Agent: CPonline-manifest-updater" "https://api.github.com/repos/$repo/releases/latest")
   if [[ -z "$release_json" ]]; then
@@ -38,20 +51,20 @@ for id in $mod_ids; do
     continue
   fi
 
-  api_error=$(jq -r '.message // empty' <<<"$release_json" 2>/dev/null)
+  api_error=$(jq -r '.message // empty' <<<"$release_json" 2>/dev/null | strip_cr)
   if [[ -n "$api_error" ]]; then
     echo "    WARNING: GitHub API error for $repo: $api_error - the repo slug in mods.json is probably wrong. Leaving placeholder values." >&2
     continue
   fi
 
-  tag=$(jq -r '.tag_name // empty' <<<"$release_json")
+  tag=$(jq -r '.tag_name // empty' <<<"$release_json" | strip_cr)
   asset_url=$(jq -r --arg pat "$pattern" '
     (.assets // [])[] | select(.name | test("^" + ($pat | gsub("\\*"; ".*") | gsub("\\?"; ".")) + "$"; "i")) | .browser_download_url
-  ' <<<"$release_json" | head -n1)
+  ' <<<"$release_json" | strip_cr | head -n1)
 
   if [[ -z "$tag" || -z "$asset_url" ]]; then
     echo "    WARNING: no asset in the latest release ($tag) matches pattern '$pattern'. Leaving placeholder values." >&2
-    asset_names=$(jq -r '(.assets // [])[].name' <<<"$release_json")
+    asset_names=$(jq -r '(.assets // [])[].name' <<<"$release_json" | strip_cr)
     if [[ -n "$asset_names" ]]; then
       echo "    Actual asset names in that release:" >&2
       echo "$asset_names" | sed 's/^/      - /' >&2
@@ -68,7 +81,7 @@ for id in $mod_ids; do
     continue
   fi
 
-  sha256=$($SHA256_CMD "$asset_file" | awk '{print $1}')
+  sha256=$($SHA256_CMD "$asset_file" | awk '{print $1}' | strip_cr)
   rm -f "$asset_file"
 
   echo "    tag=$tag sha256=$sha256" >&2

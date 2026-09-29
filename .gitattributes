@@ -1,0 +1,4 @@
+# Shell scripts must always check out with LF line endings, even on Windows, regardless of
+# the user's core.autocrlf setting - a CRLF-mangled .sh file fails in confusing ways under
+# Git Bash/MSYS (bash chokes on the trailing \r).
+*.sh text eol=lf
