@@ -1,0 +1,12 @@
+{
+  "solution": {
+    "path": "CPonline.sln",
+    "projects": [
+      "src\\CPonline.Shared\\CPonline.Shared.csproj",
+      "src\\CPonline.Launcher.Core\\CPonline.Launcher.Core.csproj",
+      "src\\CPonline.Matchmaking\\CPonline.Matchmaking.csproj",
+      "tests\\CPonline.Launcher.Tests\\CPonline.Launcher.Tests.csproj",
+      "tests\\CPonline.Matchmaking.Tests\\CPonline.Matchmaking.Tests.csproj"
+    ]
+  }
+}

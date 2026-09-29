@@ -1,0 +1,11 @@
+<UserControl x:Class="CPonline.Launcher.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Margin="12">
+        <TextBlock Text="Matchmaking relay URL" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBox Text="{Binding RelayUrl, UpdateSourceTrigger=PropertyChanged}" Width="360" Margin="0,0,0,20" />
+
+        <TextBlock Text="Local UDP port (CyberpunkMP)" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBox Text="{Binding LocalPort, UpdateSourceTrigger=PropertyChanged}" Width="100" />
+    </StackPanel>
+</UserControl>
