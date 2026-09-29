@@ -47,6 +47,15 @@ public sealed class DockerServerRunner : IDockerServerRunner
         var result = await _processLauncher.RunAsync(spec, ct).ConfigureAwait(false);
         if (result.ExitCode != 0)
         {
+            if (result.StandardError.Contains("pull access denied", StringComparison.OrdinalIgnoreCase) ||
+                result.StandardError.Contains("Unable to find image", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"The '{ImageName}' Docker image hasn't been built yet - it isn't published anywhere public. " +
+                    "Clone https://github.com/tiltedphoques/CyberpunkMP, run 'git submodule update --init', then " +
+                    $"'docker build . -tag {ImageName}' from inside it (see that repo's README for details).");
+            }
+
             throw new InvalidOperationException($"Failed to start the CyberpunkMP server container: {result.StandardError}");
         }
 

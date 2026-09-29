@@ -50,6 +50,23 @@ public class DockerServerRunnerTests
     }
 
     [Fact]
+    public async Task StartServerAsync_ImageNotBuiltYet_ThrowsAHelpfulBuildItYourselfMessage()
+    {
+        // The real error text docker prints when the "cyberpunkmp" image has never been built locally.
+        const string dockerStdErr =
+            "Unable to find image 'cyberpunkmp:latest' locally\n" +
+            "docker: Error response from daemon: pull access denied for cyberpunkmp, repository does not exist or may require 'docker login'";
+        var processLauncher = new FakeProcessLauncher { NextRunResult = new ProcessResult(125, "", dockerStdErr) };
+        var runner = new DockerServerRunner(processLauncher);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => runner.StartServerAsync(11778));
+
+        Assert.Contains("hasn't been built yet", ex.Message);
+        Assert.Contains("tiltedphoques/CyberpunkMP", ex.Message);
+        Assert.Contains("docker build . -tag cyberpunkmp", ex.Message);
+    }
+
+    [Fact]
     public async Task StopServerAsync_NonZeroExitCode_Throws()
     {
         var processLauncher = new FakeProcessLauncher { NextRunResult = new ProcessResult(1, "", "no such container") };
