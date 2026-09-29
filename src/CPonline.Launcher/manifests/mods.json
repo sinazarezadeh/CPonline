@@ -56,11 +56,11 @@
   {
     "id": "input-loader",
     "displayName": "Input Loader",
-    "repo": "psiberx/cp2077-input-loader",
+    "repo": "jackhumbert/cyberpunk2077-input-loader",
     "tag": "REPLACE_WITH_VERIFIED_TAG",
-    "assetNamePattern": "input-loader-*.zip",
+    "assetNamePattern": "*.zip",
     "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-    "installTargets": ["bin/x64/plugins/cyber_engine_tweaks/mods/input-loader"]
+    "installTargets": ["red4ext/plugins"]
   },
   {
     "id": "cyberpunkmp",
