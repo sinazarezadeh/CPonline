@@ -1,5 +1,6 @@
 using System.Net.WebSockets;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using CPonline.Shared.Contracts;
 
 namespace CPonline.Launcher.Core.Services;
@@ -27,7 +28,10 @@ public interface IMatchmakingClient : IAsyncDisposable
 /// CyberpunkMP game traffic goes directly between the two players once a room resolves.</summary>
 public sealed class MatchmakingClient : IMatchmakingClient
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() },
+    };
 
     private ClientWebSocket? _socket;
 

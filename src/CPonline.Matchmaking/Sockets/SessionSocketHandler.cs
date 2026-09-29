@@ -1,5 +1,6 @@
 using System.Net.WebSockets;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using CPonline.Matchmaking.Rooms;
 using CPonline.Shared.Contracts;
 
@@ -11,7 +12,11 @@ namespace CPonline.Matchmaking.Sockets;
 /// real socket; only the loop itself needs an integration test.</summary>
 public sealed class SessionSocketHandler
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() },
+    };
+
     private static readonly TimeSpan RoomTtl = TimeSpan.FromMinutes(30);
 
     private readonly IRoomStore _rooms;
@@ -22,16 +27,18 @@ public sealed class SessionSocketHandler
     {
         while (socket.State == WebSocketState.Open && !ct.IsCancellationRequested)
         {
-            MatchmakingMessage? message;
             try
             {
-                message = await ReceiveMessageAsync(socket, ct).ConfigureAwait(false);
-                if (message is null)
+                var received = await ReceiveMessageAsync(socket, ct).ConfigureAwait(false);
+                if (received is null)
                 {
                     break; // client closed the connection
                 }
 
-                var response = Handle(message);
+                // ReceiveMessageAsync already returns a MatchmakingErrorResponse for a message it
+                // couldn't parse - send that directly rather than routing it back through Handle(),
+                // which would otherwise stamp it with the generic "Unsupported message type" text.
+                var response = received is MatchmakingErrorResponse parseError ? parseError : Handle(received);
                 await SendAsync(socket, response, ct).ConfigureAwait(false);
             }
             catch (WebSocketException)

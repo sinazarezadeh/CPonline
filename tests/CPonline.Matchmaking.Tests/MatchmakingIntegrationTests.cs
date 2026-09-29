@@ -1,5 +1,6 @@
 using System.Net.WebSockets;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using CPonline.Shared.Contracts;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
@@ -10,7 +11,10 @@ namespace CPonline.Matchmaking.Tests;
 /// no real sockets) - verifies the actual wire protocol, not just <see cref="Sockets.SessionSocketHandler.Handle"/>'s logic.</summary>
 public class MatchmakingIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() },
+    };
 
     private readonly WebApplicationFactory<Program> _factory;
 
@@ -80,6 +84,52 @@ public class MatchmakingIntegrationTests : IClassFixture<WebApplicationFactory<P
         var resolved = await SendAndReceiveAsync<RoomResolvedResponse>(joinerSocket, new ResolveRoomRequest { RoomCode = created.RoomCode });
 
         Assert.Equal("198.51.100.30", resolved.Ip);
+    }
+
+    [Fact]
+    public async Task ReportHostAddress_WithNamedEnumOnTheWire_RoundTripsCorrectly()
+    {
+        // Regression test: HostAddressSource used to (de)serialize as a raw number with no
+        // JsonStringEnumConverter configured, so a client sending the named form ("Upnp") - as
+        // any hand-written or non-generated client reasonably would - got back a confusing
+        // "Unsupported message type" error instead of a real one. Exercises the raw wire format
+        // directly (not through MatchmakingClient) so it actually proves the JSON contract.
+        using var socket = await ConnectAsync();
+
+        await socket.SendAsync("""{"type":"create_room"}"""u8.ToArray(), WebSocketMessageType.Text, true, CancellationToken.None);
+        var created = await ReceiveRawAsync<RoomCreatedResponse>(socket);
+
+        var reportJson = $$"""
+            {"type":"report_address","roomCode":"{{created.RoomCode}}","hostToken":"{{created.HostToken}}","ip":"198.51.100.40","port":11778,"source":"Upnp"}
+            """;
+        await socket.SendAsync(System.Text.Encoding.UTF8.GetBytes(reportJson), WebSocketMessageType.Text, true, CancellationToken.None);
+
+        var reported = await ReceiveRawAsync<RoomResolvedResponse>(socket);
+        Assert.Equal("198.51.100.40", reported.Ip);
+        Assert.Equal(HostAddressSource.Upnp, reported.Source);
+    }
+
+    [Fact]
+    public async Task MalformedMessage_ReturnsItsOwnErrorText_NotTheGenericUnsupportedTypeText()
+    {
+        using var socket = await ConnectAsync();
+
+        // A well-formed discriminator but a value that can't bind (bad enum) used to get masked
+        // by Handle()'s generic "Unsupported message type" text - assert the real message survives.
+        const string badEnumJson = """{"type":"report_address","roomCode":"AAAAAA","hostToken":"x","ip":"1.2.3.4","port":1,"source":"NotARealSource"}""";
+        await socket.SendAsync(System.Text.Encoding.UTF8.GetBytes(badEnumJson), WebSocketMessageType.Text, true, CancellationToken.None);
+
+        var error = await ReceiveRawAsync<MatchmakingErrorResponse>(socket);
+        Assert.Equal(MatchmakingErrorCodes.MalformedMessage, error.Code);
+        Assert.Contains("parse", error.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static async Task<TResponse> ReceiveRawAsync<TResponse>(WebSocket socket) where TResponse : MatchmakingMessage
+    {
+        var buffer = new byte[4096];
+        var result = await socket.ReceiveAsync(buffer, CancellationToken.None);
+        var response = JsonSerializer.Deserialize<MatchmakingMessage>(buffer.AsSpan(0, result.Count), JsonOptions);
+        return Assert.IsType<TResponse>(response);
     }
 
     private async Task<WebSocket> ConnectAsync()
