@@ -72,4 +72,51 @@ public class GitHubReleaseClientTests
 
         Assert.Equal(new byte[] { 1, 2, 3, 4 }, destination.ToArray());
     }
+
+    [Fact]
+    public async Task DownloadAsync_ReportsProgressUpToOneWhenContentLengthIsKnown()
+    {
+        var payload = new byte[200_000]; // bigger than the internal read buffer, so multiple reports fire
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(payload),
+        });
+        var client = new GitHubReleaseClient(new HttpClient(handler));
+
+        var updates = new List<double>();
+        var progress = new SynchronousProgress<double>(updates.Add);
+
+        using var destination = new MemoryStream();
+        await client.DownloadAsync("https://example.invalid/asset.zip", destination, progress);
+
+        Assert.NotEmpty(updates);
+        Assert.True(updates.Count > 1, "Expected multiple progress updates for a payload larger than one read buffer.");
+        Assert.All(updates, u => Assert.InRange(u, 0.0, 1.0));
+        Assert.Equal(1.0, updates[^1]);
+        Assert.True(payload.Length == destination.Length, "The full payload should still have been written.");
+    }
+
+    [Fact]
+    public async Task DownloadAsync_NoContentLength_StillCopiesButReportsNothing()
+    {
+        var handler = new StubHttpMessageHandler(_ =>
+        {
+            var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StreamContent(new MemoryStream([1, 2, 3])),
+            };
+            response.Content.Headers.ContentLength = null; // simulate a chunked/unknown-length response
+            return response;
+        });
+        var client = new GitHubReleaseClient(new HttpClient(handler));
+
+        var updates = new List<double>();
+        var progress = new SynchronousProgress<double>(updates.Add);
+
+        using var destination = new MemoryStream();
+        await client.DownloadAsync("https://example.invalid/asset.zip", destination, progress);
+
+        Assert.Empty(updates);
+        Assert.Equal(new byte[] { 1, 2, 3 }, destination.ToArray());
+    }
 }

@@ -105,7 +105,7 @@ public sealed class HostSessionViewModel : ObservableObject, IDisposable
             if (UseLocalDockerServer)
             {
                 StatusMessage = "Checking for Docker...";
-                if (!await _dockerRunner.IsDockerAvailableAsync().ConfigureAwait(false))
+                if (!await _dockerRunner.IsDockerAvailableAsync())
                 {
                     StatusMessage = "Docker isn't available. Install Docker Desktop, or turn off " +
                                      "'run local server' and host the CyberpunkMP server yourself.";
@@ -113,24 +113,24 @@ public sealed class HostSessionViewModel : ObservableObject, IDisposable
                 }
 
                 StatusMessage = "Starting the CyberpunkMP server...";
-                _containerId = await _dockerRunner.StartServerAsync(_session.LocalPort).ConfigureAwait(false);
+                _containerId = await _dockerRunner.StartServerAsync(_session.LocalPort);
             }
 
             StatusMessage = "Connecting to the matchmaking relay...";
             _matchmakingClient = _matchmakingClientFactory();
-            await _matchmakingClient.ConnectAsync(new Uri(_session.RelayUrl)).ConfigureAwait(false);
+            await _matchmakingClient.ConnectAsync(new Uri(_session.RelayUrl));
 
-            var room = await _matchmakingClient.CreateRoomAsync().ConfigureAwait(false);
+            var room = await _matchmakingClient.CreateRoomAsync();
             RoomCode = room.RoomCode;
             _hostToken = room.HostToken;
 
             StatusMessage = "Trying to open your connection (UPnP/STUN)...";
-            var discovered = await _natTraversal.DiscoverAsync(_session.LocalPort).ConfigureAwait(false);
+            var discovered = await _natTraversal.DiscoverAsync(_session.LocalPort);
             if (discovered is not null)
             {
                 DiscoveredAddress = $"{discovered.Address}:{discovered.Port} ({discovered.Source})";
                 await _matchmakingClient.ReportHostAddressAsync(
-                    RoomCode, _hostToken, discovered.Address.ToString(), discovered.Port, discovered.Source).ConfigureAwait(false);
+                    RoomCode, _hostToken, discovered.Address.ToString(), discovered.Port, discovered.Source);
                 StatusMessage = $"Room {RoomCode} is ready - share the code with your friend.";
             }
             else
@@ -168,7 +168,7 @@ public sealed class HostSessionViewModel : ObservableObject, IDisposable
         {
             try
             {
-                await _dockerRunner.StopServerAsync(_containerId).ConfigureAwait(false);
+                await _dockerRunner.StopServerAsync(_containerId);
             }
             catch (Exception ex)
             {
@@ -180,7 +180,7 @@ public sealed class HostSessionViewModel : ObservableObject, IDisposable
 
         if (_matchmakingClient is not null)
         {
-            await _matchmakingClient.DisposeAsync().ConfigureAwait(false);
+            await _matchmakingClient.DisposeAsync();
             _matchmakingClient = null;
         }
 

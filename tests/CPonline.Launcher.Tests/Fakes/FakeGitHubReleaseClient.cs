@@ -11,6 +11,9 @@ public sealed class FakeGitHubReleaseClient : IGitHubReleaseClient
     public Task<GitHubReleaseAsset?> FindReleaseAssetAsync(string repo, string tag, string assetNamePattern, CancellationToken ct = default) =>
         Task.FromResult(Asset);
 
-    public async Task DownloadAsync(string url, Stream destination, CancellationToken ct = default) =>
+    public async Task DownloadAsync(string url, Stream destination, IProgress<double>? progress = null, CancellationToken ct = default)
+    {
         await destination.WriteAsync(AssetBytes, ct);
+        progress?.Report(1.0);
+    }
 }

@@ -1,22 +1,24 @@
 <UserControl x:Class="CPonline.Launcher.Views.JoinSessionView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <StackPanel Margin="12">
-        <TextBlock Text="Join with a room code" FontWeight="Bold" Margin="0,0,0,4" />
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+    <StackPanel Margin="16">
+        <TextBlock Text="JOIN WITH A ROOM CODE" FontFamily="{StaticResource HeaderFont}" FontWeight="Bold"
+                   Foreground="{StaticResource AccentYellowBrush}" Margin="0,0,0,8" />
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
             <TextBox Text="{Binding RoomCodeInput, UpdateSourceTrigger=PropertyChanged}"
-                     Width="120" CharacterCasing="Upper" />
-            <Button Content="Join" Command="{Binding JoinViaRoomCodeCommand}" Padding="12,4" Margin="8,0,0,0" />
+                     Width="120" CharacterCasing="Upper" FontFamily="{StaticResource HeaderFont}" FontSize="16" />
+            <Button Content="JOIN" Command="{Binding JoinViaRoomCodeCommand}" Padding="16,6" Margin="8,0,0,0" />
         </StackPanel>
 
-        <TextBlock Text="Or connect directly by IP" FontWeight="Bold" Margin="0,0,0,4" />
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+        <TextBlock Text="OR CONNECT DIRECTLY BY IP" FontFamily="{StaticResource HeaderFont}" FontWeight="Bold"
+                   Foreground="{StaticResource AccentYellowBrush}" Margin="0,0,0,8" />
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
             <TextBox Text="{Binding ManualIp, UpdateSourceTrigger=PropertyChanged}" Width="160" />
-            <TextBlock Text=":" VerticalAlignment="Center" Margin="4,0" />
+            <TextBlock Text=":" VerticalAlignment="Center" Margin="6,0" FontWeight="Bold" />
             <TextBox Text="{Binding ManualPort, UpdateSourceTrigger=PropertyChanged}" Width="80" />
-            <Button Content="Connect" Command="{Binding JoinManuallyCommand}" Padding="12,4" Margin="8,0,0,0" />
+            <Button Content="CONNECT" Command="{Binding JoinManuallyCommand}" Padding="16,6" Margin="8,0,0,0" />
         </StackPanel>
 
-        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" />
     </StackPanel>
 </UserControl>

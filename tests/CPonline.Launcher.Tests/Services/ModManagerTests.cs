@@ -38,6 +38,33 @@ public class ModManagerTests : IDisposable
     }
 
     [Fact]
+    public async Task InstallAsync_ReportsDownloadVerifyAndExtractPhasesInOrder()
+    {
+        var zipBytes = BuildZip(("red4ext/plugins/Codeware/Codeware.dll", "fake-dll-bytes"));
+        var sha256 = ComputeSha256Hex(zipBytes);
+        var entry = MakeEntry(sha256, "red4ext/plugins/Codeware");
+        var releaseClient = new FakeGitHubReleaseClient
+        {
+            Asset = new GitHubReleaseAsset("codeware-1.7.0-windows.zip", "https://example.invalid/codeware.zip", zipBytes.Length),
+            AssetBytes = zipBytes,
+        };
+
+        var updates = new List<ModInstallProgress>();
+        var progress = new SynchronousProgress<ModInstallProgress>(updates.Add);
+
+        var manager = new ModManager(releaseClient);
+        await manager.InstallAsync(entry, _gameRoot, progress);
+
+        Assert.Contains(updates, u => u.Phase == ModInstallPhase.Downloading);
+        Assert.Contains(updates, u => u.Phase == ModInstallPhase.Verifying && u.PercentComplete is null);
+        Assert.Contains(updates, u => u.Phase == ModInstallPhase.Extracting && u.PercentComplete == 1.0);
+
+        var verifyIndex = updates.FindIndex(u => u.Phase == ModInstallPhase.Verifying);
+        var firstExtractIndex = updates.FindIndex(u => u.Phase == ModInstallPhase.Extracting);
+        Assert.True(verifyIndex < firstExtractIndex, "Verifying must be reported before Extracting starts.");
+    }
+
+    [Fact]
     public async Task InstallAsync_ChecksumMismatch_ThrowsAndExtractsNothing()
     {
         var zipBytes = BuildZip(("red4ext/plugins/Codeware/Codeware.dll", "fake-dll-bytes"));

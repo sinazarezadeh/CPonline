@@ -97,9 +97,9 @@ public sealed class JoinSessionViewModel : ObservableObject
         {
             StatusMessage = "Connecting to the matchmaking relay...";
             await using var client = _matchmakingClientFactory();
-            await client.ConnectAsync(new Uri(_session.RelayUrl)).ConfigureAwait(false);
+            await client.ConnectAsync(new Uri(_session.RelayUrl));
 
-            var resolved = await client.ResolveRoomAsync(RoomCodeInput.Trim().ToUpperInvariant()).ConfigureAwait(false);
+            var resolved = await client.ResolveRoomAsync(RoomCodeInput.Trim().ToUpperInvariant());
 
             StatusMessage = $"Connecting to {resolved.Ip}:{resolved.Port}...";
             _launchOrchestrator.LaunchGame(_session.GameRoot, new ConnectionTarget(resolved.Ip, resolved.Port));

@@ -15,6 +15,8 @@ public sealed class ModManagerViewModel : ObservableObject
     private readonly AppSessionState _session;
 
     private string _statusMessage = "Detect your Cyberpunk 2077 install, or browse for it, to get started.";
+    private double _overallProgressPercent;
+    private bool _isInstallingAll;
 
     public ModManagerViewModel(
         IModManager modManager,
@@ -63,6 +65,20 @@ public sealed class ModManagerViewModel : ObservableObject
     {
         get => _statusMessage;
         set => SetProperty(ref _statusMessage, value);
+    }
+
+    /// <summary>0-100 across the whole "Install All" batch (mods completed / total), for the
+    /// overall progress bar shown below the list.</summary>
+    public double OverallProgressPercent
+    {
+        get => _overallProgressPercent;
+        set => SetProperty(ref _overallProgressPercent, value);
+    }
+
+    public bool IsInstallingAll
+    {
+        get => _isInstallingAll;
+        set => SetProperty(ref _isInstallingAll, value);
     }
 
     public IAsyncRelayCommand DetectGameCommand { get; }
@@ -114,9 +130,19 @@ public sealed class ModManagerViewModel : ObservableObject
 
     private async Task InstallAllAsync()
     {
-        foreach (var row in Mods)
+        IsInstallingAll = true;
+        OverallProgressPercent = 0;
+        try
         {
-            await InstallModAsync(row).ConfigureAwait(false);
+            for (var i = 0; i < Mods.Count; i++)
+            {
+                await InstallModAsync(Mods[i]);
+                OverallProgressPercent = (i + 1) * 100.0 / Mods.Count;
+            }
+        }
+        finally
+        {
+            IsInstallingAll = false;
         }
     }
 
@@ -128,9 +154,11 @@ public sealed class ModManagerViewModel : ObservableObject
         }
 
         row.IsBusy = true;
+        row.ResetProgress();
         try
         {
-            var record = await _modManager.InstallAsync(row.Entry, GameRoot).ConfigureAwait(false);
+            var progress = new Progress<ModInstallProgress>(row.UpdateProgress);
+            var record = await _modManager.InstallAsync(row.Entry, GameRoot, progress);
             _installedStore.Upsert(record);
             row.State = ModInstallState.UpToDate;
             StatusMessage = $"Installed {row.DisplayName} ({row.Entry.Tag}).";
@@ -142,6 +170,7 @@ public sealed class ModManagerViewModel : ObservableObject
         finally
         {
             row.IsBusy = false;
+            row.ResetProgress();
         }
     }
 }

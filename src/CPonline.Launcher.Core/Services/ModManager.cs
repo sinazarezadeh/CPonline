@@ -27,6 +27,18 @@ public static class ModInstallStateEvaluator
     }
 }
 
+public enum ModInstallPhase
+{
+    Downloading,
+    Verifying,
+    Extracting,
+}
+
+/// <summary>One progress update from <see cref="IModManager.InstallAsync"/>. PercentComplete is
+/// null while the phase's progress can't be measured (e.g. checksum verification) - callers
+/// should show an indeterminate indicator in that case rather than treating it as 0%.</summary>
+public readonly record struct ModInstallProgress(ModInstallPhase Phase, double? PercentComplete);
+
 public interface IModManager
 {
     ModInstallState GetState(ModManifestEntry entry, InstalledModRecord? existing);
@@ -36,7 +48,7 @@ public interface IModManager
     /// convention for these mod zips, which already mirror the game's own folder layout
     /// (e.g. "red4ext\...", "bin\...", "archive\..."). Throws if the checksum doesn't match
     /// the pinned manifest entry; nothing is extracted in that case.</summary>
-    Task<InstalledModRecord> InstallAsync(ModManifestEntry entry, string gameRoot, CancellationToken ct = default);
+    Task<InstalledModRecord> InstallAsync(ModManifestEntry entry, string gameRoot, IProgress<ModInstallProgress>? progress = null, CancellationToken ct = default);
 }
 
 public sealed class ModManager : IModManager
@@ -48,7 +60,8 @@ public sealed class ModManager : IModManager
     public ModInstallState GetState(ModManifestEntry entry, InstalledModRecord? existing) =>
         ModInstallStateEvaluator.Evaluate(entry, existing);
 
-    public async Task<InstalledModRecord> InstallAsync(ModManifestEntry entry, string gameRoot, CancellationToken ct = default)
+    public async Task<InstalledModRecord> InstallAsync(
+        ModManifestEntry entry, string gameRoot, IProgress<ModInstallProgress>? progress = null, CancellationToken ct = default)
     {
         var asset = await _releaseClient.FindReleaseAssetAsync(entry.Repo, entry.Tag, entry.AssetNamePattern, ct).ConfigureAwait(false)
             ?? throw new InvalidOperationException(
@@ -59,9 +72,13 @@ public sealed class ModManager : IModManager
         {
             await using (var fileStream = File.Create(tempZipPath))
             {
-                await _releaseClient.DownloadAsync(asset.BrowserDownloadUrl, fileStream, ct).ConfigureAwait(false);
+                var downloadProgress = progress is null
+                    ? null
+                    : new Progress<double>(p => progress.Report(new ModInstallProgress(ModInstallPhase.Downloading, p)));
+                await _releaseClient.DownloadAsync(asset.BrowserDownloadUrl, fileStream, downloadProgress, ct).ConfigureAwait(false);
             }
 
+            progress?.Report(new ModInstallProgress(ModInstallPhase.Verifying, null));
             var actualHash = await ChecksumVerifier.ComputeSha256Async(tempZipPath, ct).ConfigureAwait(false);
             if (!ChecksumVerifier.Matches(actualHash, entry.Sha256))
             {
@@ -69,7 +86,9 @@ public sealed class ModManager : IModManager
                     $"Checksum mismatch for '{entry.Id}': expected {entry.Sha256}, got {actualHash}. Refusing to install.");
             }
 
-            var extractedFiles = ExtractOntoGameRoot(tempZipPath, gameRoot);
+            progress?.Report(new ModInstallProgress(ModInstallPhase.Extracting, 0));
+            var extractedFiles = ExtractOntoGameRoot(tempZipPath, gameRoot, progress);
+            progress?.Report(new ModInstallProgress(ModInstallPhase.Extracting, 1));
 
             return new InstalledModRecord
             {
@@ -86,12 +105,15 @@ public sealed class ModManager : IModManager
         }
     }
 
-    private static List<string> ExtractOntoGameRoot(string zipPath, string gameRoot)
+    private static List<string> ExtractOntoGameRoot(string zipPath, string gameRoot, IProgress<ModInstallProgress>? progress)
     {
         var normalizedRoot = Path.GetFullPath(gameRoot);
         var extractedFiles = new List<string>();
 
         using var archive = ZipFile.OpenRead(zipPath);
+        var totalEntries = archive.Entries.Count;
+        var processed = 0;
+
         foreach (var zipEntry in archive.Entries)
         {
             if (string.IsNullOrEmpty(zipEntry.Name))
@@ -109,6 +131,12 @@ public sealed class ModManager : IModManager
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
             zipEntry.ExtractToFile(destination, overwrite: true);
             extractedFiles.Add(destination);
+
+            processed++;
+            if (totalEntries > 0)
+            {
+                progress?.Report(new ModInstallProgress(ModInstallPhase.Extracting, (double)processed / totalEntries));
+            }
         }
 
         return extractedFiles;
