@@ -45,6 +45,11 @@ if ! grep -q 'bookworm-backports cmake' "$VENDOR_DIR/Dockerfile"; then
   sed -i '/apt install -y xmake g++/a\  && apt install -y -t bookworm-backports cmake \\' "$VENDOR_DIR/Dockerfile"
 fi
 
+if ! grep -q '"protobuf-cpp 29.3"' "$VENDOR_DIR/xmake.lua"; then
+  log "Patching CyberpunkMP's xmake.lua - its own vendored protobuf codegen helpers (code/netpack/cpp/helpers.h) use APIs (EffectiveStringCType, PROTOBUF_NODISCARD) that protobuf removed in v30+; it declares protobuf-cpp with no version pin, so an unpinned build resolves to the latest (currently v36.2) and fails. Pinning to 29.3, the last release that still has those APIs."
+  sed -i 's/"protobuf-cpp",/"protobuf-cpp 29.3",/' "$VENDOR_DIR/xmake.lua"
+fi
+
 # --- 3. Build + start ---
 log "Building and starting both containers (this compiles CyberpunkMP's C++ server from source - can take several minutes on the first run)..."
 docker compose -f "$COMPOSE_FILE" up -d --build

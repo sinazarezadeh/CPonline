@@ -20,18 +20,23 @@ and `deploy/vendor/CyberpunkMP`, then run `./deploy/setup.sh` again.
 
 1. Installs Docker if needed.
 2. Clones `tiltedphoques/CyberpunkMP` into `deploy/vendor/CyberpunkMP` and pulls its submodules.
-3. Patches that clone's `Dockerfile` (never touches upstream):
+3. Patches that clone's `Dockerfile` and `xmake.lua` (never touches upstream):
    - adds `unzip` - its base image is missing it, which otherwise breaks the build partway
      through (it can't extract its own downloaded dependencies).
    - installs `cmake` from `bookworm-backports` - the base image's stock CMake (3.25) is too
      old for several dependencies (`entt`, `abseil`, `cryptopp`, `openssl3` all require 3.28+).
+   - pins `protobuf-cpp` to `29.3` - it's declared with no version pin, so an unpinned build
+     resolves to the latest release (currently v36.2), whose C++ codegen API is incompatible
+     with CyberpunkMP's own vendored `code/netpack/cpp/helpers.h` (it calls
+     `EffectiveStringCType`/`PROTOBUF_NODISCARD`, both removed from protobuf in v30+). 29.3 is
+     the last release before that break.
 4. Builds and starts both containers via `deploy/docker-compose.yml`, restarting automatically
    on reboot (`restart: unless-stopped`).
 5. Opens the relevant firewall ports if `ufw` is active.
 6. Prints your server's public IP and the exact values to give your friends.
 
-Both patches are idempotent and independent, so re-running the script always applies whichever
-of them a given clone is still missing.
+All three patches are idempotent and independent, so re-running the script always applies
+whichever of them a given clone is still missing.
 
 ## What to give your friends
 
