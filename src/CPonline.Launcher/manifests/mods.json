@@ -4,7 +4,7 @@
     "displayName": "RED4ext",
     "repo": "WopsS/RED4ext",
     "tag": "REPLACE_WITH_VERIFIED_TAG",
-    "assetNamePattern": "red4ext-v*.zip",
+    "assetNamePattern": "red4ext-?.*.zip",
     "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
     "installTargets": ["red4ext"]
   },
@@ -13,7 +13,7 @@
     "displayName": "Cyber Engine Tweaks (CET)",
     "repo": "maximegmd/CyberEngineTweaks",
     "tag": "REPLACE_WITH_VERIFIED_TAG",
-    "assetNamePattern": "cyber-engine-tweaks-v*.zip",
+    "assetNamePattern": "cet_*.zip",
     "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
     "installTargets": ["bin/x64/plugins/cyber_engine_tweaks"]
   },
@@ -22,7 +22,7 @@
     "displayName": "Redscript",
     "repo": "jac3km4/redscript",
     "tag": "REPLACE_WITH_VERIFIED_TAG",
-    "assetNamePattern": "redscript-mod-*.zip",
+    "assetNamePattern": "redscript-v*-windows.zip",
     "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
     "installTargets": ["engine/tools"]
   },
@@ -31,7 +31,7 @@
     "displayName": "ArchiveXL",
     "repo": "psiberx/cp2077-archive-xl",
     "tag": "REPLACE_WITH_VERIFIED_TAG",
-    "assetNamePattern": "archive-xl-*.zip",
+    "assetNamePattern": "ArchiveXL-*.zip",
     "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
     "installTargets": ["red4ext/plugins/ArchiveXL"]
   },
@@ -40,7 +40,7 @@
     "displayName": "TweakXL",
     "repo": "psiberx/cp2077-tweak-xl",
     "tag": "REPLACE_WITH_VERIFIED_TAG",
-    "assetNamePattern": "tweak-xl-*.zip",
+    "assetNamePattern": "TweakXL-*.zip",
     "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
     "installTargets": ["red4ext/plugins/TweakXL"]
   },
@@ -67,7 +67,7 @@
     "displayName": "CyberpunkMP",
     "repo": "tiltedphoques/CyberpunkMP",
     "tag": "REPLACE_WITH_VERIFIED_TAG",
-    "assetNamePattern": "*win64*client*.zip",
+    "assetNamePattern": "Cyberpunk.Multiplayer-*.zip",
     "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
     "installTargets": ["red4ext/plugins/CyberpunkMP", "r6/scripts/CyberpunkMP"]
   }
