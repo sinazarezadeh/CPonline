@@ -40,6 +40,11 @@ if ! grep -q 'unzip' "$VENDOR_DIR/Dockerfile"; then
   sed -i 's/apt install -y xmake g++/apt install -y xmake g++ unzip/' "$VENDOR_DIR/Dockerfile"
 fi
 
+if ! grep -q 'bookworm-backports cmake' "$VENDOR_DIR/Dockerfile"; then
+  log "Patching CyberpunkMP's Dockerfile - its base image's CMake (3.25) is too old for some of its dependencies (entt, abseil, cryptopp, openssl3 all need 3.28+); pulling a newer one from bookworm-backports (already enabled by the Dockerfile itself)."
+  sed -i '/apt install -y xmake g++/a\  && apt install -y -t bookworm-backports cmake \\' "$VENDOR_DIR/Dockerfile"
+fi
+
 # --- 3. Build + start ---
 log "Building and starting both containers (this compiles CyberpunkMP's C++ server from source - can take several minutes on the first run)..."
 docker compose -f "$COMPOSE_FILE" up -d --build
