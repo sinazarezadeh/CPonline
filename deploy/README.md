@@ -35,12 +35,19 @@ and `deploy/vendor/CyberpunkMP`, then run `./deploy/setup.sh` again.
      exactly this reason); the Dockerfile never did, so the build failed on
      `pnpm: command not found`. Installed from Node's own release tarball rather than another
      apt source.
+   - pins `gamenetworkingsockets` to `v1.4.1` - also declared with no version pin, so an
+     unpinned build resolves to v1.6.0, which itself depends on `protobuf-cpp` with no version
+     constraint of its own; that conflicts with the `29.3` pin above and resolves to a
+     mismatched abseil build, breaking the final link with
+     `undefined reference to ...LowLevelHashLenGt16`. CyberpunkMP's own committed Windows lock
+     file (`xmake-requires.lock`) pins this same dependency to `v1.4.1` - the last version whose
+     own recipe still declares `protobuf-cpp<30`, compatible with the `29.3` pin.
 4. Builds and starts both containers via `deploy/docker-compose.yml`, restarting automatically
    on reboot (`restart: unless-stopped`).
 5. Opens the relevant firewall ports if `ufw` is active.
 6. Prints your server's public IP and the exact values to give your friends.
 
-All four patches are idempotent and independent, so re-running the script always applies
+All five patches are idempotent and independent, so re-running the script always applies
 whichever of them a given clone is still missing.
 
 ## What to give your friends

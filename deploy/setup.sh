@@ -50,6 +50,12 @@ if ! grep -q '"protobuf-cpp 29.3"' "$VENDOR_DIR/xmake.lua"; then
   sed -i 's/"protobuf-cpp",/"protobuf-cpp 29.3",/' "$VENDOR_DIR/xmake.lua"
 fi
 
+if ! grep -q 'gamenetworkingsockets v1.4.1' "$VENDOR_DIR/xmake.lua"; then
+  log "Patching CyberpunkMP's xmake.lua - it also declares gamenetworkingsockets with no version pin, which resolves to v1.6.0; that version requires protobuf-cpp with no version constraint of its own, which conflicts with the 29.3 pin above and resolves to a mismatched abseil build, breaking the final link with 'undefined reference to ...LowLevelHashLenGt16'. CyberpunkMP's own committed Windows lock file (xmake-requires.lock) pins this same dependency to v1.4.1, the last version whose own recipe still declares protobuf-cpp<30 - compatible with the 29.3 pin. Pinning the same known-good version here."
+  sed -i 's/"gamenetworkingsockets",/"gamenetworkingsockets v1.4.1",/' "$VENDOR_DIR/xmake.lua"
+  sed -i 's/"gamenetworkingsockets", "catch2/"gamenetworkingsockets v1.4.1", "catch2/' "$VENDOR_DIR/code/common/xmake.lua"
+fi
+
 if ! grep -q 'nodejs.org/dist' "$VENDOR_DIR/Dockerfile"; then
   log "Patching CyberpunkMP's Dockerfile - the build also compiles its web Admin dashboard (code/server/admin), which needs Node.js/pnpm (confirmed from CyberpunkMP's own CI workflow, which installs pnpm before building); the Dockerfile never installs either, so the build fails partway through with 'pnpm: command not found'. Installing Node straight from its official tarball (not apt) so this doesn't depend on yet another package source."
   sed -i '/apt install -y -t bookworm-backports cmake/,/apt clean/{/apt clean/a\
