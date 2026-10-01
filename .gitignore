@@ -16,3 +16,6 @@ TestResults/
 ## OS
 .DS_Store
 Thumbs.db
+
+## deploy/setup.sh's local CyberpunkMP clone (built fresh on each server, never committed)
+deploy/vendor/

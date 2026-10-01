@@ -30,12 +30,17 @@ and `deploy/vendor/CyberpunkMP`, then run `./deploy/setup.sh` again.
      with CyberpunkMP's own vendored `code/netpack/cpp/helpers.h` (it calls
      `EffectiveStringCType`/`PROTOBUF_NODISCARD`, both removed from protobuf in v30+). 29.3 is
      the last release before that break.
+   - installs Node.js + pnpm - the build also compiles CyberpunkMP's web Admin dashboard
+     (`code/server/admin`), which needs both (its own CI installs pnpm before building for
+     exactly this reason); the Dockerfile never did, so the build failed on
+     `pnpm: command not found`. Installed from Node's own release tarball rather than another
+     apt source.
 4. Builds and starts both containers via `deploy/docker-compose.yml`, restarting automatically
    on reboot (`restart: unless-stopped`).
 5. Opens the relevant firewall ports if `ufw` is active.
 6. Prints your server's public IP and the exact values to give your friends.
 
-All three patches are idempotent and independent, so re-running the script always applies
+All four patches are idempotent and independent, so re-running the script always applies
 whichever of them a given clone is still missing.
 
 ## What to give your friends

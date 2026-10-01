@@ -50,6 +50,17 @@ if ! grep -q '"protobuf-cpp 29.3"' "$VENDOR_DIR/xmake.lua"; then
   sed -i 's/"protobuf-cpp",/"protobuf-cpp 29.3",/' "$VENDOR_DIR/xmake.lua"
 fi
 
+if ! grep -q 'nodejs.org/dist' "$VENDOR_DIR/Dockerfile"; then
+  log "Patching CyberpunkMP's Dockerfile - the build also compiles its web Admin dashboard (code/server/admin), which needs Node.js/pnpm (confirmed from CyberpunkMP's own CI workflow, which installs pnpm before building); the Dockerfile never installs either, so the build fails partway through with 'pnpm: command not found'. Installing Node straight from its official tarball (not apt) so this doesn't depend on yet another package source."
+  sed -i '/apt install -y -t bookworm-backports cmake/,/apt clean/{/apt clean/a\
+\
+RUN curl -fsSL https://nodejs.org/dist/v22.11.0/node-v22.11.0-linux-x64.tar.gz -o /tmp/node.tar.gz \\\
+  \&\& tar -xzf /tmp/node.tar.gz -C /usr/local --strip-components=1 \\\
+  \&\& rm /tmp/node.tar.gz \\\
+  \&\& npm install -g pnpm
+}' "$VENDOR_DIR/Dockerfile"
+fi
+
 # --- 3. Build + start ---
 log "Building and starting both containers (this compiles CyberpunkMP's C++ server from source - can take several minutes on the first run)..."
 docker compose -f "$COMPOSE_FILE" up -d --build
