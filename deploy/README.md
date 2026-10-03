@@ -42,12 +42,16 @@ and `deploy/vendor/CyberpunkMP`, then run `./deploy/setup.sh` again.
      `undefined reference to ...LowLevelHashLenGt16`. CyberpunkMP's own committed Windows lock
      file (`xmake-requires.lock`) pins this same dependency to `v1.4.1` - the last version whose
      own recipe still declares `protobuf-cpp<30`, compatible with the `29.3` pin.
+   - makes a build failure print the real error - by default, when any dependency fails to
+     build, xmake only prints a short, often unhelpful snippet and points at a log file inside
+     its own Docker build-cache mount, which isn't reachable from outside the build. This makes
+     it dump every failed package's full install log straight into the build output instead.
 4. Builds and starts both containers via `deploy/docker-compose.yml`, restarting automatically
    on reboot (`restart: unless-stopped`).
 5. Opens the relevant firewall ports if `ufw` is active.
 6. Prints your server's public IP and the exact values to give your friends.
 
-All five patches are idempotent and independent, so re-running the script always applies
+All six patches are idempotent and independent, so re-running the script always applies
 whichever of them a given clone is still missing.
 
 ## What to give your friends

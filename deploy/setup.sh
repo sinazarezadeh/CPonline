@@ -67,6 +67,16 @@ RUN curl -fsSL https://nodejs.org/dist/v22.11.0/node-v22.11.0-linux-x64.tar.gz -
 }' "$VENDOR_DIR/Dockerfile"
 fi
 
+if ! grep -q 'installdir.failed' "$VENDOR_DIR/Dockerfile"; then
+  log "Patching CyberpunkMP's Dockerfile - on a build failure, xmake only prints a truncated snippet and points at a log file inside its own cache mount, which isn't reachable from outside the build. Making it dump every failed package's full install log straight into the build output instead, so the real error is visible on the first failure instead of needing another round of digging."
+  OLD_RUN_LINE='RUN --mount=type=cache,target=/root/.xmake xmake -y'
+  NEW_RUN_LINE='RUN --mount=type=cache,target=/root/.xmake xmake -y || (find /root/.xmake/cache/packages -path "*/installdir.failed/logs/*" -name "*.txt" -exec sh -c '"'"'echo "=== {} ==="; cat "{}"'"'"' \; ; exit 1)'
+  export NEW_RUN_LINE
+  awk -v old="$OLD_RUN_LINE" '{ if ($0==old) print ENVIRON["NEW_RUN_LINE"]; else print }' "$VENDOR_DIR/Dockerfile" > "$VENDOR_DIR/Dockerfile.tmp"
+  mv "$VENDOR_DIR/Dockerfile.tmp" "$VENDOR_DIR/Dockerfile"
+  unset NEW_RUN_LINE
+fi
+
 # --- 3. Build + start ---
 log "Building and starting both containers (this compiles CyberpunkMP's C++ server from source - can take several minutes on the first run)..."
 docker compose -f "$COMPOSE_FILE" up -d --build
