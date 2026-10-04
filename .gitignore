@@ -19,3 +19,6 @@ Thumbs.db
 
 ## deploy/setup.sh's local CyberpunkMP clone (built fresh on each server, never committed)
 deploy/vendor/
+
+## deploy/setup.sh's generated server admin credentials (secret, server-specific)
+deploy/.env

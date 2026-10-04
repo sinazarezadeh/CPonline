@@ -13,6 +13,9 @@ services:
       context: ./vendor/CyberpunkMP
     container_name: cponline-cyberpunkmp
     restart: unless-stopped
+    environment:
+      CYBERPUNKMP_ADMIN_USERNAME: "${CYBERPUNKMP_ADMIN_USERNAME}"
+      CYBERPUNKMP_ADMIN_PASSWORD: "${CYBERPUNKMP_ADMIN_PASSWORD}"
     ports:
       - "${CYBERPUNKMP_PORT:-11778}:11778/tcp"
       - "${CYBERPUNKMP_PORT:-11778}:11778/udp"

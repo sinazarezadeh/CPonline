@@ -103,11 +103,22 @@ if ! grep -q 'installdir.failed' "$VENDOR_DIR/Dockerfile"; then
   unset NEW_RUN_LINE
 fi
 
-# --- 3. Build + start ---
-log "Building and starting both containers (this compiles CyberpunkMP's C++ server from source - can take several minutes on the first run)..."
-docker compose -f "$COMPOSE_FILE" up -d --build
+# --- 3. Admin credentials ---
+ENV_FILE="$SCRIPT_DIR/.env"
+if [[ ! -f "$ENV_FILE" ]]; then
+  log "Generating admin credentials for the CyberpunkMP server's web API (first run only) - without these, the server refuses to start at all ('You must provide admin credentials using environment variables.')."
+  ADMIN_PASSWORD="$(openssl rand -hex 12 2>/dev/null || head -c 18 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 24)"
+  cat > "$ENV_FILE" <<EOF
+CYBERPUNKMP_ADMIN_USERNAME=admin
+CYBERPUNKMP_ADMIN_PASSWORD=$ADMIN_PASSWORD
+EOF
+fi
 
-# --- 4. Firewall (best-effort; skipped if ufw isn't in use) ---
+# --- 4. Build + start ---
+log "Building and starting both containers (this compiles CyberpunkMP's C++ server from source - can take several minutes on the first run)..."
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --build
+
+# --- 5. Firewall (best-effort; skipped if ufw isn't in use) ---
 if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
   log "Opening firewall ports via ufw..."
   ufw allow 8080/tcp >/dev/null 2>&1 || true
@@ -115,8 +126,10 @@ if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: a
   ufw allow 11778/udp >/dev/null 2>&1 || true
 fi
 
-# --- 5. Report ---
+# --- 6. Report ---
 PUBLIC_IP="$(curl -fsS https://ifconfig.me 2>/dev/null || curl -fsS https://api.ipify.org 2>/dev/null || echo "<could not auto-detect - check your VPS provider's dashboard>")"
+# shellcheck disable=SC1090
+source "$ENV_FILE"
 
 cat <<EOF
 
@@ -131,6 +144,11 @@ cat <<EOF
  (If you're also using the launcher's Host/Join tabs with room codes
  instead, the matchmaking relay is at ws://$PUBLIC_IP:8080/session -
  put that in Settings.)
+
+ Server admin credentials (generated on first run, saved in
+ deploy/.env - keep this file private):
+     username: $CYBERPUNKMP_ADMIN_USERNAME
+     password: $CYBERPUNKMP_ADMIN_PASSWORD
 
  Useful commands:
    docker compose -f $COMPOSE_FILE logs -f       # view live logs

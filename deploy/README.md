@@ -60,10 +60,18 @@ and `deploy/vendor/CyberpunkMP`, then run `./deploy/setup.sh` again.
      build, xmake only prints a short, often unhelpful snippet and points at a log file inside
      its own Docker build-cache mount, which isn't reachable from outside the build. This makes
      it dump every failed package's full install log straight into the build output instead.
-4. Builds and starts both containers via `deploy/docker-compose.yml`, restarting automatically
+4. Generates admin credentials for the CyberpunkMP server's own web API, saved to `deploy/.env`
+   (gitignored - never committed), the first time the script runs. Without these the server's
+   own code refuses to start at all - it builds and the image runs, but the process throws
+   `System.Security.SecurityException: You must provide admin credentials using environment
+   variables.` on every startup and Docker just keeps restarting it in a crash loop, which looks
+   like a working deploy (both containers show as running) until you notice the CyberpunkMP one
+   restarting every ~60 seconds and nothing is actually listening on its port.
+5. Builds and starts both containers via `deploy/docker-compose.yml`, restarting automatically
    on reboot (`restart: unless-stopped`).
-5. Opens the relevant firewall ports if `ufw` is active.
-6. Prints your server's public IP and the exact values to give your friends.
+6. Opens the relevant firewall ports if `ufw` is active.
+7. Prints your server's public IP, the admin credentials, and the exact values to give your
+   friends.
 
 All eight patches are idempotent and independent, so re-running the script always applies
 whichever of them a given clone is still missing.
@@ -83,6 +91,9 @@ docker compose -f deploy/docker-compose.yml ps           # check status
 docker compose -f deploy/docker-compose.yml down         # stop everything
 ./deploy/setup.sh                                         # rebuild + restart after any update
 ```
+
+If a command needs the CyberpunkMP container's environment (rare - `ps`/`logs`/`down` don't),
+add `--env-file deploy/.env`.
 
 ## Ports
 
