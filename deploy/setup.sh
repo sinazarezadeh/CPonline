@@ -67,6 +67,17 @@ RUN curl -fsSL https://nodejs.org/dist/v22.11.0/node-v22.11.0-linux-x64.tar.gz -
 }' "$VENDOR_DIR/Dockerfile"
 fi
 
+if ! grep -q 'dangerously-allow-all-builds' "$VENDOR_DIR/Dockerfile"; then
+  log "Patching CyberpunkMP's Dockerfile - the build runs 'pnpm install' twice more (code/server/admin and code/server/scripting/EmoteSystem); modern pnpm (10+) refuses to run dependencies' install scripts (e.g. esbuild's) unless approved, and treats that as a hard error (ERR_PNPM_IGNORED_BUILDS) rather than a warning in this context - breaking 'pnpm install' with exit code 1 the moment it's hit for real, non-interactively, inside a Docker build. Approving all build scripts globally once, right after installing pnpm, the same way its own docs suggest for CI."
+  OLD_LINE='  && npm install -g pnpm'
+  NEW_LINE='  && npm install -g pnpm \
+  && pnpm config set dangerously-allow-all-builds true'
+  export NEW_LINE
+  awk -v old="$OLD_LINE" '{ if ($0==old) print ENVIRON["NEW_LINE"]; else print }' "$VENDOR_DIR/Dockerfile" > "$VENDOR_DIR/Dockerfile.tmp"
+  mv "$VENDOR_DIR/Dockerfile.tmp" "$VENDOR_DIR/Dockerfile"
+  unset NEW_LINE
+fi
+
 if ! grep -q 'add_requireconfs("protobuf-cpp"' "$VENDOR_DIR/xmake.lua"; then
   log "Patching CyberpunkMP's xmake.lua - the 29.3 pin above isn't being honored reliably: gamenetworkingsockets' own package recipe additionally depends on protobuf-cpp with no upper bound, and xmake's automatic conflict resolution between that and the exact 29.3 pin has resolved to a newer, unpinned version in practice (confirmed: protobuf 36.2+ removed the opt-in and made GetTypeName() always return absl::string_view, which has no .c_str() - exactly the 'has no member named c_str' error from the last build). Forcing the pin project-wide with xmake's documented override mechanism instead of relying on constraint intersection. Appending at end-of-file isn't safe here - this file ends inside an un-closed option() scope - so this inserts right after the top add_requires(...) block instead, a location already proven safe by the patches above."
   OLD_LINE='    "microsoft-gsl")'

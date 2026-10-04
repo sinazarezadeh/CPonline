@@ -35,6 +35,12 @@ and `deploy/vendor/CyberpunkMP`, then run `./deploy/setup.sh` again.
      exactly this reason); the Dockerfile never did, so the build failed on
      `pnpm: command not found`. Installed from Node's own release tarball rather than another
      apt source.
+   - approves all pnpm build scripts - the build runs `pnpm install` twice more (that Admin
+     dashboard, and `code/server/scripting/EmoteSystem`'s own copy of it); modern pnpm (10+)
+     refuses to run a dependency's install scripts (e.g. `esbuild`'s) unless approved, and
+     treats that as a hard error (`ERR_PNPM_IGNORED_BUILDS`) rather than a warning here, failing
+     `pnpm install` outright with nothing to approve it interactively inside a Docker build.
+     Approved globally once, right after installing pnpm, the way pnpm's own docs suggest for CI.
    - pins `gamenetworkingsockets` to `v1.4.1` - also declared with no version pin, so an
      unpinned build resolves to v1.6.0, which itself depends on `protobuf-cpp` with no version
      constraint of its own; that conflicts with the `29.3` pin above and resolves to a
@@ -59,7 +65,7 @@ and `deploy/vendor/CyberpunkMP`, then run `./deploy/setup.sh` again.
 5. Opens the relevant firewall ports if `ufw` is active.
 6. Prints your server's public IP and the exact values to give your friends.
 
-All seven patches are idempotent and independent, so re-running the script always applies
+All eight patches are idempotent and independent, so re-running the script always applies
 whichever of them a given clone is still missing.
 
 ## What to give your friends
