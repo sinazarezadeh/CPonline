@@ -42,6 +42,14 @@ and `deploy/vendor/CyberpunkMP`, then run `./deploy/setup.sh` again.
      `undefined reference to ...LowLevelHashLenGt16`. CyberpunkMP's own committed Windows lock
      file (`xmake-requires.lock`) pins this same dependency to `v1.4.1` - the last version whose
      own recipe still declares `protobuf-cpp<30`, compatible with the `29.3` pin.
+   - forces the `protobuf-cpp` pin project-wide - the version pin above isn't actually honored
+     reliably on its own: `gamenetworkingsockets` additionally depends on `protobuf-cpp` with no
+     upper bound, and xmake's automatic conflict resolution between that and the exact pin has
+     in practice resolved to a newer, unpinned protobuf anyway. Newer protobuf (30+) made
+     `GetTypeName()` always return `absl::string_view`, which has no `.c_str()` - exactly the
+     `has no member named 'c_str'` error compiling `GameNetworkingSockets`. Uses xmake's
+     documented `add_requireconfs(..., {override = true, ...})` to force a single, deterministic
+     resolution instead of relying on constraint intersection.
    - makes a build failure print the real error - by default, when any dependency fails to
      build, xmake only prints a short, often unhelpful snippet and points at a log file inside
      its own Docker build-cache mount, which isn't reachable from outside the build. This makes
@@ -51,7 +59,7 @@ and `deploy/vendor/CyberpunkMP`, then run `./deploy/setup.sh` again.
 5. Opens the relevant firewall ports if `ufw` is active.
 6. Prints your server's public IP and the exact values to give your friends.
 
-All six patches are idempotent and independent, so re-running the script always applies
+All seven patches are idempotent and independent, so re-running the script always applies
 whichever of them a given clone is still missing.
 
 ## What to give your friends

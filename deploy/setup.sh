@@ -67,6 +67,21 @@ RUN curl -fsSL https://nodejs.org/dist/v22.11.0/node-v22.11.0-linux-x64.tar.gz -
 }' "$VENDOR_DIR/Dockerfile"
 fi
 
+if ! grep -q 'add_requireconfs("protobuf-cpp"' "$VENDOR_DIR/xmake.lua"; then
+  log "Patching CyberpunkMP's xmake.lua - the 29.3 pin above isn't being honored reliably: gamenetworkingsockets' own package recipe additionally depends on protobuf-cpp with no upper bound, and xmake's automatic conflict resolution between that and the exact 29.3 pin has resolved to a newer, unpinned version in practice (confirmed: protobuf 36.2+ removed the opt-in and made GetTypeName() always return absl::string_view, which has no .c_str() - exactly the 'has no member named c_str' error from the last build). Forcing the pin project-wide with xmake's documented override mechanism instead of relying on constraint intersection. Appending at end-of-file isn't safe here - this file ends inside an un-closed option() scope - so this inserts right after the top add_requires(...) block instead, a location already proven safe by the patches above."
+  OLD_LINE='    "microsoft-gsl")'
+  NEW_LINE='    "microsoft-gsl")
+
+-- cponline: force protobuf-cpp to 29.3 everywhere, overriding any looser
+-- constraint declared by a package dependency (e.g. gamenetworkingsockets) -
+-- see deploy/setup.sh for why.
+add_requireconfs("protobuf-cpp", {override = true, version = "29.3"})'
+  export NEW_LINE
+  awk -v old="$OLD_LINE" '{ if ($0==old) print ENVIRON["NEW_LINE"]; else print }' "$VENDOR_DIR/xmake.lua" > "$VENDOR_DIR/xmake.lua.tmp"
+  mv "$VENDOR_DIR/xmake.lua.tmp" "$VENDOR_DIR/xmake.lua"
+  unset NEW_LINE
+fi
+
 if ! grep -q 'installdir.failed' "$VENDOR_DIR/Dockerfile"; then
   log "Patching CyberpunkMP's Dockerfile - on a build failure, xmake only prints a truncated snippet and points at a log file inside its own cache mount, which isn't reachable from outside the build. Making it dump every failed package's full install log straight into the build output instead, so the real error is visible on the first failure instead of needing another round of digging."
   OLD_RUN_LINE='RUN --mount=type=cache,target=/root/.xmake xmake -y'
